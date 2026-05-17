@@ -1,0 +1,1 @@
+python scripts/send_runpod_request.py --user-id alice --workflow test_input.json --image-url https://example.com/image.png --image-node-id 42 --image-input-key url

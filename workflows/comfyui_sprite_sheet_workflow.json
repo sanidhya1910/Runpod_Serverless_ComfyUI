@@ -1,0 +1,629 @@
+{
+  "2": {
+    "inputs": {
+      "filename_prefix": "sprite_sheet/spritesheet_output",
+      "images": [
+        "105",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "14": {
+    "inputs": {
+      "image": "ComfyUI_00025_.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "57": {
+    "inputs": {
+      "filename_prefix": "sprite_sheet/frame_01",
+      "images": [
+        "93:32",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "58": {
+    "inputs": {
+      "filename_prefix": "sprite_sheet/frame_02",
+      "images": [
+        "93:45",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "59": {
+    "inputs": {
+      "filename_prefix": "sprite_sheet/frame_03",
+      "images": [
+        "93:46",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "61": {
+    "inputs": {
+      "filename_prefix": "sprite_sheet/frame_04",
+      "images": [
+        "93:48",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "64": {
+    "inputs": {
+      "filename_prefix": "sprite_sheet/spritesheet_mask",
+      "images": [
+        "93:86",
+        0
+      ],
+      "mask": [
+        "93:86",
+        1
+      ]
+    },
+    "class_type": "SaveImageWithAlpha",
+    "_meta": {
+      "title": "Save Image With Alpha"
+    }
+  },
+  "74": {
+    "inputs": {
+      "filename_prefix": "sprite_sheet/frame_05",
+      "images": [
+        "93:70",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "75": {
+    "inputs": {
+      "filename_prefix": "sprite_sheet/frame_06",
+      "images": [
+        "93:71",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "76": {
+    "inputs": {
+      "filename_prefix": "sprite_sheet/frame_07",
+      "images": [
+        "93:72",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "77": {
+    "inputs": {
+      "filename_prefix": "sprite_sheet/frame_08",
+      "images": [
+        "93:73",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "82": {
+    "inputs": {
+      "frame_rate": 8,
+      "loop_count": 0,
+      "filename_prefix": "sprite_sheet/animation",
+      "format": "video/ffmpeg-gif",
+      "dither": "sierra2_4a",
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "93:81",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "87": {
+    "inputs": {
+      "frame_rate": 8,
+      "loop_count": 0,
+      "filename_prefix": "sprite_sheet/animation",
+      "format": "image/webp",
+      "lossless": true,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "93:81",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "105": {
+    "inputs": {
+      "prompt": "pixelart, 32x32 pixels sprite sheet, white background,  , 4 x 2 grid of images\n\nNO NUMBERING. NO BORDERS.\n\ndancing",
+      "num_images": 1,
+      "aspect_ratio": "16:9",
+      "output_format": "png",
+      "resolution": "2K",
+      "seed": 663490596,
+      "enable_web_search": false,
+      "sync_mode": false,
+      "images": [
+        "14",
+        0
+      ]
+    },
+    "class_type": "NanoBanana2_fal",
+    "_meta": {
+      "title": "Nano Banana 2 (fal)"
+    }
+  },
+  "93:70": {
+    "inputs": {
+      "top": [
+        "93:41",
+        0
+      ],
+      "left": 0,
+      "right": [
+        "93:33",
+        0
+      ],
+      "bottom": [
+        "93:34",
+        1
+      ],
+      "image": [
+        "93:86",
+        0
+      ]
+    },
+    "class_type": "Image Crop Location",
+    "_meta": {
+      "title": "Image Crop Location"
+    }
+  },
+  "93:71": {
+    "inputs": {
+      "top": [
+        "93:41",
+        0
+      ],
+      "left": [
+        "93:33",
+        0
+      ],
+      "right": [
+        "93:38",
+        0
+      ],
+      "bottom": [
+        "93:34",
+        1
+      ],
+      "image": [
+        "93:86",
+        0
+      ]
+    },
+    "class_type": "Image Crop Location",
+    "_meta": {
+      "title": "Image Crop Location"
+    }
+  },
+  "93:72": {
+    "inputs": {
+      "top": [
+        "93:41",
+        0
+      ],
+      "left": [
+        "93:38",
+        0
+      ],
+      "right": [
+        "93:39",
+        0
+      ],
+      "bottom": [
+        "93:34",
+        1
+      ],
+      "image": [
+        "93:86",
+        0
+      ]
+    },
+    "class_type": "Image Crop Location",
+    "_meta": {
+      "title": "Image Crop Location"
+    }
+  },
+  "93:48": {
+    "inputs": {
+      "top": 0,
+      "left": [
+        "93:39",
+        0
+      ],
+      "right": [
+        "93:53",
+        0
+      ],
+      "bottom": [
+        "93:41",
+        0
+      ],
+      "image": [
+        "93:86",
+        0
+      ]
+    },
+    "class_type": "Image Crop Location",
+    "_meta": {
+      "title": "Image Crop Location"
+    }
+  },
+  "93:45": {
+    "inputs": {
+      "top": 0,
+      "left": [
+        "93:33",
+        0
+      ],
+      "right": [
+        "93:38",
+        0
+      ],
+      "bottom": [
+        "93:41",
+        0
+      ],
+      "image": [
+        "93:86",
+        0
+      ]
+    },
+    "class_type": "Image Crop Location",
+    "_meta": {
+      "title": "Image Crop Location"
+    }
+  },
+  "93:32": {
+    "inputs": {
+      "top": 0,
+      "left": 0,
+      "right": [
+        "93:33",
+        0
+      ],
+      "bottom": [
+        "93:41",
+        0
+      ],
+      "image": [
+        "93:86",
+        0
+      ]
+    },
+    "class_type": "Image Crop Location",
+    "_meta": {
+      "title": "Image Crop Location"
+    }
+  },
+  "93:65": {
+    "inputs": {
+      "preview_markdown": "688",
+      "preview_text": "688",
+      "previewMode": null,
+      "source": [
+        "93:33",
+        0
+      ]
+    },
+    "class_type": "PreviewAny",
+    "_meta": {
+      "title": "Preview as Text"
+    }
+  },
+  "93:66": {
+    "inputs": {
+      "preview_markdown": "1376",
+      "preview_text": "1376",
+      "previewMode": null,
+      "source": [
+        "93:38",
+        0
+      ]
+    },
+    "class_type": "PreviewAny",
+    "_meta": {
+      "title": "Preview as Text"
+    }
+  },
+  "93:38": {
+    "inputs": {
+      "value": "a + b",
+      "a": [
+        "93:33",
+        0
+      ],
+      "b": [
+        "93:33",
+        0
+      ]
+    },
+    "class_type": "SimpleMath+",
+    "_meta": {
+      "title": "🔧 Simple Math"
+    }
+  },
+  "93:67": {
+    "inputs": {
+      "preview_markdown": "2064",
+      "preview_text": "2064",
+      "previewMode": null,
+      "source": [
+        "93:39",
+        0
+      ]
+    },
+    "class_type": "PreviewAny",
+    "_meta": {
+      "title": "Preview as Text"
+    }
+  },
+  "93:39": {
+    "inputs": {
+      "value": "a + b",
+      "a": [
+        "93:38",
+        0
+      ],
+      "b": [
+        "93:33",
+        0
+      ]
+    },
+    "class_type": "SimpleMath+",
+    "_meta": {
+      "title": "🔧 Simple Math"
+    }
+  },
+  "93:68": {
+    "inputs": {
+      "preview_markdown": "2752",
+      "preview_text": "2752",
+      "previewMode": null,
+      "source": [
+        "93:53",
+        0
+      ]
+    },
+    "class_type": "PreviewAny",
+    "_meta": {
+      "title": "Preview as Text"
+    }
+  },
+  "93:53": {
+    "inputs": {
+      "value": "a + b",
+      "a": [
+        "93:39",
+        0
+      ],
+      "b": [
+        "93:33",
+        0
+      ]
+    },
+    "class_type": "SimpleMath+",
+    "_meta": {
+      "title": "🔧 Simple Math"
+    }
+  },
+  "93:73": {
+    "inputs": {
+      "top": [
+        "93:41",
+        0
+      ],
+      "left": [
+        "93:39",
+        0
+      ],
+      "right": [
+        "93:53",
+        0
+      ],
+      "bottom": [
+        "93:34",
+        1
+      ],
+      "image": [
+        "93:86",
+        0
+      ]
+    },
+    "class_type": "Image Crop Location",
+    "_meta": {
+      "title": "Image Crop Location"
+    }
+  },
+  "93:46": {
+    "inputs": {
+      "top": 0,
+      "left": [
+        "93:38",
+        0
+      ],
+      "right": [
+        "93:39",
+        0
+      ],
+      "bottom": [
+        "93:41",
+        0
+      ],
+      "image": [
+        "93:86",
+        0
+      ]
+    },
+    "class_type": "Image Crop Location",
+    "_meta": {
+      "title": "Image Crop Location"
+    }
+  },
+  "93:37": {
+    "inputs": {
+      "image": [
+        "105",
+        0
+      ]
+    },
+    "class_type": "SplitImageWithAlpha",
+    "_meta": {
+      "title": "Split Image with Alpha"
+    }
+  },
+  "93:41": {
+    "inputs": {
+      "value": "a / 2",
+      "a": [
+        "93:34",
+        1
+      ]
+    },
+    "class_type": "SimpleMath+",
+    "_meta": {
+      "title": "🔧 Simple Math"
+    }
+  },
+  "93:33": {
+    "inputs": {
+      "value": "a / 4",
+      "a": [
+        "93:34",
+        0
+      ]
+    },
+    "class_type": "SimpleMath+",
+    "_meta": {
+      "title": "🔧 Simple Math"
+    }
+  },
+  "93:81": {
+    "inputs": {
+      "images.image0": [
+        "93:32",
+        0
+      ],
+      "images.image1": [
+        "93:45",
+        0
+      ],
+      "images.image2": [
+        "93:46",
+        0
+      ],
+      "images.image3": [
+        "93:48",
+        0
+      ],
+      "images.image4": [
+        "93:70",
+        0
+      ],
+      "images.image5": [
+        "93:71",
+        0
+      ],
+      "images.image6": [
+        "93:72",
+        0
+      ],
+      "images.image7": [
+        "93:73",
+        0
+      ]
+    },
+    "class_type": "BatchImagesNode",
+    "_meta": {
+      "title": "Batch Images"
+    }
+  },
+  "93:86": {
+    "inputs": {
+      "model": "BiRefNet_toonout",
+      "mask_blur": 0,
+      "mask_offset": -4,
+      "invert_output": false,
+      "refine_foreground": false,
+      "background": "Alpha",
+      "background_color": "#222222",
+      "image": [
+        "93:37",
+        0
+      ]
+    },
+    "class_type": "BiRefNetRMBG",
+    "_meta": {
+      "title": "BiRefNet Remove Background (RMBG)"
+    }
+  },
+  "93:34": {
+    "inputs": {
+      "image": [
+        "105",
+        0
+      ]
+    },
+    "class_type": "GetImageSize",
+    "_meta": {
+      "title": "Get Image Size"
+    }
+  }
+}
