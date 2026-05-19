@@ -3,3 +3,4 @@ runpod~=1.7.12
 websocket-client
 requests
 python-dotenv
+gradio>=4.44.0

@@ -1,0 +1,87 @@
+{
+  "comfyui_flux_workflow.json": {
+    "prompt": { "node_id": "6", "input_key": "text" }
+  },
+  "Flux_Dev_Fal_T2I.json": {
+    "prompt": { "node_id": "1", "input_key": "value" },
+    "ui": [
+      {
+        "id": "1.value",
+        "node_id": "1",
+        "input_key": "value",
+        "label": "Prompt",
+        "widget": "text",
+        "group": "Prompts",
+        "lines": 5
+      },
+      {
+        "id": "2.image_size",
+        "node_id": "2",
+        "input_key": "image_size",
+        "label": "Aspect / size preset",
+        "widget": "dropdown",
+        "group": "Resolution",
+        "choices": [
+          "square_hd",
+          "square",
+          "portrait_4_3",
+          "portrait_16_9",
+          "landscape_4_3",
+          "landscape_16_9"
+        ]
+      },
+      {
+        "id": "2.width",
+        "node_id": "2",
+        "input_key": "width",
+        "label": "Width",
+        "widget": "slider",
+        "group": "Resolution",
+        "min": 512,
+        "max": 1536,
+        "step": 64
+      },
+      {
+        "id": "2.height",
+        "node_id": "2",
+        "input_key": "height",
+        "label": "Height",
+        "widget": "slider",
+        "group": "Resolution",
+        "min": 512,
+        "max": 1536,
+        "step": 64
+      },
+      {
+        "id": "2.num_inference_steps",
+        "node_id": "2",
+        "input_key": "num_inference_steps",
+        "label": "Steps",
+        "widget": "slider",
+        "group": "Sampling",
+        "min": 1,
+        "max": 50,
+        "step": 1
+      },
+      {
+        "id": "2.guidance_scale",
+        "node_id": "2",
+        "input_key": "guidance_scale",
+        "label": "Guidance",
+        "widget": "slider",
+        "group": "Sampling",
+        "min": 0,
+        "max": 10,
+        "step": 0.1
+      },
+      {
+        "id": "2.seed",
+        "node_id": "2",
+        "input_key": "seed",
+        "label": "Seed (-1 = random)",
+        "widget": "number",
+        "group": "Sampling"
+      }
+    ]
+  }
+}
