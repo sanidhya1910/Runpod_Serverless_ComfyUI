@@ -1,0 +1,1 @@
+https://huggingface.co/Alissonerdx/BFS-Best-Face-Swap/blob/main/bfs_head_v5_2511_merged_version_rank_16_fp16.safetensors

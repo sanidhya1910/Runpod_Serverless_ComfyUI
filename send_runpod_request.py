@@ -17,6 +17,11 @@ import requests
 from dotenv import load_dotenv
 
 from media_urls import resolve_output_media_url, resolve_response_media_urls
+from workflow_fields import (
+    apply_field_values,
+    build_placeholder_map,
+    find_unfilled_placeholders,
+)
 
 
 DEFAULT_BASE_URL = "https://api.runpod.ai/v2"
@@ -426,6 +431,19 @@ def print_response_summary(response: Dict[str, Any]) -> None:
         print("No generated outputs were included in the response.")
 
 
+def parse_set_args(set_args: list[str] | None) -> Dict[str, str]:
+    values: Dict[str, str] = {}
+    for item in set_args or []:
+        if "=" not in item:
+            raise SystemExit(f"Invalid --set '{item}'. Use NAME=VALUE (e.g. --set positive_prompt=hello).")
+        name, value = item.split("=", 1)
+        name = name.strip()
+        if not name:
+            raise SystemExit(f"Invalid --set '{item}'. Name cannot be empty.")
+        values[name] = value
+    return values
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Send a ComfyUI workflow to RunPod")
     parser.add_argument("--api-key", default=os.getenv("RUNPOD_API_KEY"), help="RunPod API key (defaults to RUNPOD_API_KEY from .env)")
@@ -466,6 +484,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not rewrite R2 S3 API URLs to R2_PUBLIC_BASE_URL",
     )
+    parser.add_argument(
+        "--set",
+        action="append",
+        metavar="NAME=VALUE",
+        help="Set a {{placeholder}} or node.input value (repeatable)",
+    )
     return parser
 
 
@@ -483,6 +507,11 @@ def main() -> None:
         return
 
     workflow = load_workflow(args.workflow)
+
+    set_values = parse_set_args(args.set)
+    if set_values:
+        workflow = apply_field_values(workflow, set_values)
+
     if args.image_url:
         image_node_id, image_input_key = resolve_image_target(
             workflow,
@@ -494,15 +523,35 @@ def main() -> None:
         inject_workflow_value(workflow, image_node_id, image_input_key, args.image_url)
 
     if args.prompt:
-        prompt_node_id, prompt_input_key = resolve_prompt_target(
-            workflow,
-            args.workflow,
-            node_id=args.prompt_node_id,
-            input_key=args.prompt_input_key,
-            node_title_query=args.prompt_node_title,
-            bindings=bindings,
+        placeholders = build_placeholder_map(workflow)
+        if args.prompt_node_id:
+            input_key = args.prompt_input_key or "text"
+            inject_workflow_value(workflow, args.prompt_node_id, input_key, args.prompt)
+        elif placeholders:
+            name = next(
+                (n for n in ("positive_prompt", "prompt") if n in placeholders),
+                sorted(placeholders.keys())[0],
+            )
+            node_id, input_key = placeholders[name]
+            inject_workflow_value(workflow, node_id, input_key, args.prompt)
+        else:
+            prompt_node_id, prompt_input_key = resolve_prompt_target(
+                workflow,
+                args.workflow,
+                node_id=None,
+                input_key=args.prompt_input_key,
+                node_title_query=args.prompt_node_title,
+                bindings=bindings,
+            )
+            inject_workflow_value(workflow, prompt_node_id, prompt_input_key, args.prompt)
+
+    unfilled = find_unfilled_placeholders(workflow)
+    if unfilled:
+        names = ", ".join(unfilled)
+        raise SystemExit(
+            f"Workflow still has unfilled placeholders: {names}. "
+            f"Use --set name=value for each (e.g. --set {unfilled[0]}=...)."
         )
-        inject_workflow_value(workflow, prompt_node_id, prompt_input_key, args.prompt)
 
     result = send_runpod_request(
         workflow=workflow,

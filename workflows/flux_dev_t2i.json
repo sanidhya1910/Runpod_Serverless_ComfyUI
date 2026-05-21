@@ -1,7 +1,7 @@
 {
   "1": {
     "inputs": {
-      "value": ""
+      "value": "{{prompt}}"
     },
     "class_type": "PrimitiveStringMultiline",
     "_meta": {
@@ -15,8 +15,8 @@
         0
       ],
       "image_size": "square_hd",
-      "width": 1024,
-      "height": 1024,
+      "width": "{{width}}",
+      "height": "{{height}}",
       "num_inference_steps": 28,
       "guidance_scale": 3.5,
       "num_images": 1,

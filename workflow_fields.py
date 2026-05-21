@@ -9,6 +9,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, Literal, Tuple
 
+# Value must be exactly {{name}} — marks an input to replace before sending to RunPod.
+PLACEHOLDER_PATTERN = re.compile(r"^\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}$")
+
 WidgetKind = Literal[
     "text",
     "text_short",
@@ -173,6 +176,62 @@ def parse_field_id(field_id_str: str) -> Tuple[str, str]:
     if not node_id or not input_key:
         raise ValueError(f"Invalid field id: {field_id_str}")
     return node_id, input_key
+
+
+def parse_placeholder_name(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    match = PLACEHOLDER_PATTERN.match(value.strip())
+    return match.group(1) if match else None
+
+
+def iter_placeholders_in_workflow(
+    workflow: Dict[str, Any],
+) -> Iterable[Tuple[str, str, str, Dict[str, Any]]]:
+    """Yield (placeholder_name, node_id, input_key, node) for each {{name}} input."""
+
+    for node_id, node in iter_workflow_nodes(workflow):
+        inputs = node.get("inputs")
+        if not isinstance(inputs, dict):
+            continue
+        for input_key, value in inputs.items():
+            if is_linked_value(value):
+                continue
+            name = parse_placeholder_name(value)
+            if name:
+                yield name, node_id, input_key, node
+
+
+def build_placeholder_map(workflow: Dict[str, Any]) -> Dict[str, Tuple[str, str]]:
+    """Map placeholder name -> (node_id, input_key)."""
+
+    mapping: Dict[str, Tuple[str, str]] = {}
+    for name, node_id, input_key, _node in iter_placeholders_in_workflow(workflow):
+        if name in mapping and mapping[name] != (node_id, input_key):
+            raise ValueError(
+                f"Placeholder '{{{{{name}}}}}' is used on multiple inputs: "
+                f"{mapping[name]} and {(node_id, input_key)}"
+            )
+        mapping[name] = (node_id, input_key)
+    return mapping
+
+
+def resolve_field_target(workflow: Dict[str, Any], field_key: str) -> Tuple[str, str]:
+    """Resolve field id: either 'node.input' or a {{placeholder}} name."""
+
+    if "." in field_key:
+        return parse_field_id(field_key)
+    mapping = build_placeholder_map(workflow)
+    if field_key in mapping:
+        return mapping[field_key]
+    raise ValueError(f"Unknown field '{field_key}' (not node.input or {{placeholder}})")
+
+
+def find_unfilled_placeholders(workflow: Dict[str, Any]) -> list[str]:
+    unfilled: list[str] = []
+    for name, _node_id, _input_key, _node in iter_placeholders_in_workflow(workflow):
+        unfilled.append(name)
+    return unfilled
 
 
 def classify_string_field(
@@ -357,6 +416,89 @@ def get_runpod_ui_config(workflow: Dict[str, Any]) -> Dict[str, Any]:
     return meta if isinstance(meta, dict) else {}
 
 
+def placeholder_config(runpod: Dict[str, Any], name: str) -> Dict[str, Any]:
+    placeholders = runpod.get("placeholders")
+    if not isinstance(placeholders, dict):
+        return {}
+    entry = placeholders.get(name)
+    return entry if isinstance(entry, dict) else {}
+
+
+def field_from_placeholder(
+    name: str,
+    node_id: str,
+    input_key: str,
+    node: Dict[str, Any],
+    runpod: Dict[str, Any],
+) -> FieldSpec:
+    config = placeholder_config(runpod, name)
+    label = config.get("label") or f"{name.replace('_', ' ').title()} ({node_id}.{input_key})"
+    group = str(config.get("group", "Inputs"))
+    widget_override = config.get("widget")
+
+    if widget_override:
+        widget = widget_override
+        default: Any = config.get("default", "")
+        spec = FieldSpec(
+            field_id=name,
+            node_id=node_id,
+            input_key=input_key,
+            label=str(label),
+            widget=widget,
+            default=default,
+            group=group,
+            min=config.get("min"),
+            max=config.get("max"),
+            step=config.get("step"),
+            choices=list(config.get("choices", [])),
+            lines=int(config.get("lines", 3)),
+        )
+        return spec
+
+    # Infer widget from node/input (treat placeholder default as empty string for prompts).
+    inferred = classify_string_field(node_id, node, input_key, "")
+    if inferred:
+        inferred.field_id = name
+        inferred.label = str(label)
+        inferred.group = group
+        inferred.default = config.get("default", "")
+        return inferred
+
+    hints = NUMBER_HINTS.get(input_key)
+    if hints:
+        return FieldSpec(
+            field_id=name,
+            node_id=node_id,
+            input_key=input_key,
+            label=str(label),
+            widget="slider",
+            default=config.get("default", hints[0] or 0),
+            group=group,
+            min=config.get("min", hints[0]),
+            max=config.get("max", hints[1]),
+            step=config.get("step", hints[2]),
+        )
+
+    return FieldSpec(
+        field_id=name,
+        node_id=node_id,
+        input_key=input_key,
+        label=str(label),
+        widget="text_short",
+        default=config.get("default", ""),
+        group=group,
+    )
+
+
+def discover_placeholder_fields(workflow: Dict[str, Any]) -> list[FieldSpec]:
+    runpod = get_runpod_ui_config(workflow)
+    specs: list[FieldSpec] = []
+    for name, node_id, input_key, node in iter_placeholders_in_workflow(workflow):
+        specs.append(field_from_placeholder(name, node_id, input_key, node, runpod))
+    specs.sort(key=lambda s: s.label)
+    return specs
+
+
 def discover_fields(
     workflow: Dict[str, Any],
     *,
@@ -370,6 +512,10 @@ def discover_fields(
     if isinstance(entries, list) and entries:
         specs = [field_from_ui_entry(e, workflow) for e in entries]
         return [s for s in specs if s is not None]
+
+    placeholder_specs = discover_placeholder_fields(workflow)
+    if placeholder_specs:
+        return placeholder_specs
 
     if explicit_only:
         return []
@@ -450,17 +596,35 @@ def load_bindings_ui(workflow_name: str, bindings: Dict[str, Any]) -> list[Dict[
     return ui if isinstance(ui, list) else None
 
 
+def coerce_input_value(current: Any, raw_value: Any) -> Any:
+    if isinstance(current, bool):
+        return bool(raw_value)
+    if isinstance(current, int) and not isinstance(current, bool):
+        return int(float(raw_value))
+    if isinstance(current, float):
+        return float(raw_value)
+    if parse_placeholder_name(current) is not None:
+        if isinstance(raw_value, (int, float)) and not isinstance(raw_value, bool):
+            return int(raw_value) if float(raw_value).is_integer() else float(raw_value)
+        return raw_value
+    return raw_value
+
+
 def apply_field_values(workflow: Dict[str, Any], values: Dict[str, Any]) -> Dict[str, Any]:
-    """Return a copy of the workflow with user values applied."""
+    """Return a copy of the workflow with user values applied (by node.input or {{placeholder}} name)."""
 
     patched = copy.deepcopy(workflow)
     for fid, raw_value in values.items():
         if raw_value is None:
             continue
-        if isinstance(raw_value, str) and not raw_value.strip() and fid.endswith(".text"):
+        if isinstance(raw_value, str) and not raw_value.strip() and "." in fid and fid.endswith(".text"):
             continue
 
-        node_id, input_key = parse_field_id(fid)
+        try:
+            node_id, input_key = resolve_field_target(patched, fid)
+        except ValueError:
+            continue
+
         node = patched.get(node_id)
         if not isinstance(node, dict):
             continue
@@ -469,14 +633,7 @@ def apply_field_values(workflow: Dict[str, Any], values: Dict[str, Any]) -> Dict
             continue
 
         current = inputs.get(input_key)
-        if isinstance(current, bool):
-            inputs[input_key] = bool(raw_value)
-        elif isinstance(current, int) and not isinstance(current, bool):
-            inputs[input_key] = int(float(raw_value))
-        elif isinstance(current, float):
-            inputs[input_key] = float(raw_value)
-        else:
-            inputs[input_key] = raw_value
+        inputs[input_key] = coerce_input_value(current, raw_value)
 
     return patched
 
