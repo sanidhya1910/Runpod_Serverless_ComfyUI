@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any, Dict, Iterable, Tuple
 
@@ -51,6 +52,53 @@ load_dotenv()
 DEFAULT_ENDPOINT_ID = os.getenv("RUNPOD_ENDPOINT_ID", "")
 
 
+TERMINAL_STATUSES = {"COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"}
+
+
+def _auth_headers(api_key: str) -> Dict[str, str]:
+    return {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+
+def poll_runpod_job(
+    job_id: str,
+    api_key: str,
+    endpoint_id: str,
+    base_url: str = DEFAULT_BASE_URL,
+    poll_interval: float = 2.0,
+    max_poll_interval: float = 10.0,
+    overall_timeout: int = 600,
+) -> Dict[str, Any]:
+    """Poll /status/{job_id} until the job is terminal or overall_timeout elapses."""
+
+    status_url = f"{base_url.rstrip('/')}/{endpoint_id}/status/{job_id}"
+    deadline = time.monotonic() + overall_timeout
+    interval = poll_interval
+    last_status: str | None = None
+
+    while True:
+        response = requests.get(status_url, headers=_auth_headers(api_key), timeout=30)
+        response.raise_for_status()
+        body = response.json()
+        status = body.get("status")
+
+        if status != last_status:
+            print(f"status: {status}")
+            last_status = status
+
+        if isinstance(status, str) and status in TERMINAL_STATUSES:
+            return body
+
+        if time.monotonic() >= deadline:
+            print(f"warning: overall_timeout ({overall_timeout}s) elapsed; returning last status")
+            return body
+
+        time.sleep(interval)
+        interval = min(interval * 1.5, max_poll_interval)
+
+
 def send_runpod_request(
     workflow: Dict[str, Any],
     user_id: str,
@@ -58,9 +106,9 @@ def send_runpod_request(
     endpoint_id: str = DEFAULT_ENDPOINT_ID,
     run_sync: bool = True,
     base_url: str = DEFAULT_BASE_URL,
-    timeout: int = 300,
+    timeout: int = 600,
 ) -> Dict[str, Any]:
-    """Send a workflow to a RunPod ComfyUI endpoint."""
+    """Send a workflow to a RunPod ComfyUI endpoint. Polls /status if the job isn't terminal."""
 
     route = "runsync" if run_sync else "run"
     url = f"{base_url.rstrip('/')}/{endpoint_id}/{route}"
@@ -74,15 +122,25 @@ def send_runpod_request(
 
     response = requests.post(
         url,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
+        headers=_auth_headers(api_key),
         json=payload,
         timeout=timeout,
     )
     response.raise_for_status()
-    return response.json()
+    body = response.json()
+
+    status = body.get("status")
+    job_id = extract_job_id(body)
+    if status not in TERMINAL_STATUSES and job_id:
+        print(f"job_id: {job_id} (status: {status}); polling…")
+        body = poll_runpod_job(
+            job_id=job_id,
+            api_key=api_key,
+            endpoint_id=endpoint_id,
+            base_url=base_url,
+            overall_timeout=timeout,
+        )
+    return body
 
 
 def load_workflow(path: str) -> Dict[str, Any]:
@@ -339,7 +397,11 @@ def resolve_image_target(
 def list_workflow_nodes(workflow_path: str, bindings: Dict[str, Any]) -> None:
     workflow = load_workflow(workflow_path)
     print(f"Workflow: {workflow_path}")
-    for node_id, node in sorted(iter_workflow_nodes(workflow), key=lambda x: int(x[0]) if x[0].isdigit() else x[0]):
+    def _sort_key(item: Tuple[str, Dict[str, Any]]) -> Tuple[int, int | str]:
+        nid = item[0]
+        return (0, int(nid)) if nid.isdigit() else (1, nid)
+
+    for node_id, node in sorted(iter_workflow_nodes(workflow), key=_sort_key):
         class_type = node.get("class_type", "?")
         title = node_title(node) or "(no title)"
         inputs = node.get("inputs")
@@ -360,7 +422,7 @@ def list_workflow_nodes(workflow_path: str, bindings: Dict[str, Any]) -> None:
         print(f"  embedded prompt -> {embedded['node_id']}.{embedded['input_key']}")
 
 
-def inject_workflow_value(workflow: Dict[str, Any], node_id: str, input_key: str, value: str) -> None:
+def inject_workflow_value(workflow: Dict[str, Any], node_id: str, input_key: str, value: Any) -> None:
     """Inject a value into a specific workflow node input."""
 
     node = workflow.get(node_id)
@@ -372,6 +434,53 @@ def inject_workflow_value(workflow: Dict[str, Any], node_id: str, input_key: str
         raise SystemExit(f"Workflow node '{node_id}' does not contain an 'inputs' object.")
 
     inputs[input_key] = value
+
+
+def resolve_duration_target(
+    workflow: Dict[str, Any],
+    workflow_path: str,
+    *,
+    bindings: Dict[str, Any] | None = None,
+) -> Tuple[str, str]:
+    """Find a node that holds the video duration (e.g. PrimitiveInt titled 'Duration')."""
+
+    embedded = get_embedded_binding(workflow, "duration")
+    if embedded:
+        return embedded["node_id"], embedded["input_key"]
+
+    file_binding = lookup_file_binding(bindings or {}, workflow_path, "duration")
+    if file_binding:
+        return file_binding["node_id"], file_binding["input_key"]
+
+    matches: list[Tuple[str, str]] = []
+    for nid, node in iter_workflow_nodes(workflow):
+        title = node_title(node).lower()
+        class_type = node.get("class_type", "")
+        if title == "duration" and class_type in ("PrimitiveInt", "PrimitiveFloat"):
+            matches.append((nid, "value"))
+
+    if not matches:
+        for nid, node in iter_workflow_nodes(workflow):
+            inputs = node.get("inputs")
+            if isinstance(inputs, dict) and "duration" in inputs and not is_linked_value(inputs["duration"]):
+                matches.append((nid, "duration"))
+
+    if not matches:
+        raise SystemExit(
+            "Could not find a duration node. Add a node titled 'Duration' (PrimitiveInt), "
+            "or add a 'duration' binding in workflows/runpod_bindings.json."
+        )
+    if len(matches) > 1:
+        opts = ", ".join(f"{nid}.{key}" for nid, key in matches)
+        raise SystemExit(f"Ambiguous duration node. Candidates: {opts}")
+
+    nid, key = matches[0]
+    print(f"auto duration: node {nid} -> inputs.{key}")
+    return nid, key
+
+
+def is_linked_value(value: Any) -> bool:
+    return isinstance(value, list) and len(value) == 2 and isinstance(value[1], int)
 
 
 def extract_job_id(response: Dict[str, Any]) -> str | None:
@@ -414,6 +523,14 @@ def print_response_summary(response: Dict[str, Any]) -> None:
     job_id = extract_job_id(response)
     if job_id:
         print(f"job_id: {job_id}")
+
+    exec_ms = response.get("executionTime")
+    delay_ms = response.get("delayTime")
+    if isinstance(exec_ms, (int, float)):
+        line = f"execution_time: {exec_ms / 1000:.2f}s"
+        if isinstance(delay_ms, (int, float)):
+            line += f" (delay: {delay_ms / 1000:.2f}s, total: {(exec_ms + delay_ms) / 1000:.2f}s)"
+        print(line)
 
     found_output = False
     for output_type, item in iter_output_items(response):
@@ -490,6 +607,20 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="NAME=VALUE",
         help="Set a {{placeholder}} or node.input value (repeatable)",
     )
+    parser.add_argument(
+        "--duration",
+        type=int,
+        help="Set video duration in seconds (auto-detects a node titled 'Duration')",
+    )
+    parser.add_argument(
+        "--duration-node-id",
+        help="Workflow node id for duration (optional; auto-detected if omitted)",
+    )
+    parser.add_argument(
+        "--duration-input-key",
+        default="value",
+        help="Input key on the duration node (default: value)",
+    )
     return parser
 
 
@@ -521,6 +652,15 @@ def main() -> None:
             bindings=bindings,
         )
         inject_workflow_value(workflow, image_node_id, image_input_key, args.image_url)
+
+    if args.duration is not None:
+        if args.duration_node_id:
+            duration_node_id, duration_input_key = args.duration_node_id, args.duration_input_key
+        else:
+            duration_node_id, duration_input_key = resolve_duration_target(
+                workflow, args.workflow, bindings=bindings
+            )
+        inject_workflow_value(workflow, duration_node_id, duration_input_key, int(args.duration))
 
     if args.prompt:
         placeholders = build_placeholder_map(workflow)
